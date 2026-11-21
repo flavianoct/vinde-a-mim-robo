@@ -204,8 +204,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   const link = (process.env.LINK_DO_PLANO ?? 'https://flaviocoelhotoledo.systeme.io/30-dias-de-paz').trim();
   const palavras = (process.env.PALAVRAS ?? 'eu quero,quero,euquero').split(',');
   if (!token || !userId) {
-    console.error('::error::Faltam os Secrets INSTAGRAM_TOKEN e INSTAGRAM_USER_ID.');
-    process.exit(1);
+    // Ainda não configurado: espera em silêncio (sem falhar, para o GitHub não mandar e-mail de erro a cada rodada).
+    console.log('::notice::Robô aguardando: cadastre os Secrets INSTAGRAM_TOKEN e INSTAGRAM_USER_ID no repositório.');
+    process.exit(0);
   }
   const arquivo = process.env.ARQUIVO_DO_ESTADO ?? 'estado.json';
   const estado = existsSync(arquivo) ? JSON.parse(readFileSync(arquivo, 'utf8')) : {};
