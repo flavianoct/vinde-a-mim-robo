@@ -60,6 +60,22 @@ test('manda o link a quem pediu e só uma vez', async () => {
   assert.deepEqual(outra.log.direct, []);
 });
 
+test('devocional: palavra do pago manda a página de vendas, e vence "eu quero o devocional"', async () => {
+  const api = falso({
+    comentarios: [
+      { id: 'c1', texto: 'DEVOCIONAL', usuario: 'ana', em: Date.parse(h(1)) },
+      { id: 'c2', texto: 'eu quero o devocional de 40 dias', usuario: 'bia', em: Date.parse(h(1)) },
+      { id: 'c3', texto: 'eu quero', usuario: 'cla', em: Date.parse(h(1)) },
+      { id: 'c4', texto: 'amém', usuario: 'dai', em: Date.parse(h(1)) },
+    ],
+  });
+  const enviados = [];
+  api.direcAoComentario = async (id, texto) => enviados.push([id, texto.includes('centralcursos') ? 'pago' : texto.includes('30-dias-de-paz') ? 'gratis' : '?']);
+  const r = await rodar({ api, estado: {}, link: 'https://x/30-dias-de-paz', palavras: P, linkDevocional: 'https://centralcursos/devocional', palavrasDevocional: ['devocional', '40 dias', '40dias'], agora, pausar: async () => {} });
+  assert.deepEqual(enviados, [['c1', 'pago'], ['c2', 'pago'], ['c3', 'gratis']]);
+  assert.deepEqual(r.eventos, ['comentário-devocional', 'comentário-devocional', 'comentário']);
+});
+
 test('responde a quem escreveu no direct, dentro de 24h', async () => {
   const api = falso({
     conversas: [

@@ -106,7 +106,8 @@ function pintar(s) {
   if (!(s.eventos || []).length) $('lista').innerHTML = '<li class="vazio">Ainda nenhum link enviado.</li>';
   for (const ev of (s.eventos || []).slice(0, 15)) {
     const li = document.createElement('li');
-    const a = document.createElement('span'); a.textContent = ev.tipo === 'direct' ? 'Pediu no direct → link enviado' : 'Comentou → link no direct';
+    const ROTULO = { 'comentário': 'Comentou → plano grátis no direct', 'direct': 'Pediu no direct → plano grátis', 'comentário-devocional': 'Comentou → página do devocional', 'direct-devocional': 'Pediu no direct → página do devocional' };
+    const a = document.createElement('span'); a.textContent = ROTULO[ev.tipo] || 'Link enviado';
     const b = document.createElement('span'); b.style.color = 'var(--mut)'; b.textContent = fmt(ev.em);
     li.append(a, b); $('lista').appendChild(li);
   }

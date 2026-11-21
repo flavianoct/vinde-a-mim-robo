@@ -95,15 +95,28 @@ export function textoDoDirect(link) {
   return `Oi! 🤍 Que bom que você quis.\n\nAqui está o seu plano grátis de 30 dias de paz (um versículo, uma reflexão curta e uma oração por dia):\n\n${link}\n\nÉ só colocar o seu nome e e-mail que o PDF abre na hora. Que Deus acalme o seu coração hoje. 🕊️`;
 }
 
+export function textoDoDevocional(link) {
+  return `Oi! 🤍 Que bom o seu interesse.\n\nO devocional "Vinde a Mim: 40 dias de descanso em Deus" tem uma palavra, uma reflexão e uma oração por dia, pra quem está cansada e com a mente cheia. Dá pra ver tudo, e comprar se quiser, por aqui:\n\n${link}\n\nSe tiver qualquer dúvida, é só me escrever. Que Deus abençoe o seu dia. 🕊️`;
+}
+
 /**
  * Uma rodada. `estado` = { comentarios: {id: ts}, mensagens: {id: ts} } é alterado no lugar.
+ * Duas respostas possíveis: a palavra do plano grátis ("eu quero") manda `link`; a do devocional pago ("devocional", "40 dias")
+ * manda `linkDevocional` (se vier). A do devocional vence quando o texto tem as duas ("eu quero o devocional").
  * Devolve { lidos, enviados, avisos }. Erro fatal (token vencido, falta de permissão) é lançado para a rodada falhar e o GitHub avisar.
  */
-export async function rodar({ api, estado, link, palavras, limite = 20, agora = Date.now(), pausar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function rodar({ api, estado, link, palavras, linkDevocional, palavrasDevocional = [], limite = 20, agora = Date.now(), pausar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const resumo = { lidos: 0, enviados: 0, avisos: [], eventos: [] };
   estado.comentarios ??= {};
   estado.mensagens ??= {};
-  const mensagem = textoDoDirect(link);
+  const mensagemGratis = textoDoDirect(link);
+  const mensagemPaga = linkDevocional ? textoDoDevocional(linkDevocional) : undefined;
+  /** O que mandar para um texto: { devocional: boolean, mensagem } ou undefined se não pediu nada. */
+  const escolher = (texto) => {
+    if (mensagemPaga && pedeOPlano(texto, palavrasDevocional)) return { devocional: true, mensagem: mensagemPaga };
+    if (pedeOPlano(texto, palavras)) return { devocional: false, mensagem: mensagemGratis };
+    return undefined;
+  };
   const eu = await api.meuUsuario();
   let semAcesso = 0;
   let falhas = 0;
@@ -124,7 +137,8 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
       resumo.lidos++;
       if (estado.comentarios[c.id]) continue;
       if (c.usuario === eu) continue;
-      if (!pedeOPlano(c.texto, palavras)) continue;
+      const escolha = escolher(c.texto);
+      if (!escolha) continue;
       // Passou de 7 dias: o Instagram não aceita mais resposta privada. Anota e segue.
       if (c.em && agora - c.em > SETE_DIAS) {
         estado.comentarios[c.id] = agora;
@@ -133,7 +147,7 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
       // Anota ANTES de mandar: se a rodada cair no meio, a pessoa não recebe o link duas vezes.
       estado.comentarios[c.id] = agora;
       try {
-        await api.direcAoComentario(c.id, mensagem);
+        await api.direcAoComentario(c.id, escolha.mensagem);
       } catch (e) {
         if (e.fatal) {
           delete estado.comentarios[c.id];
@@ -144,7 +158,7 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
         continue;
       }
       resumo.enviados++;
-      resumo.eventos.push('comentário');
+      resumo.eventos.push(escolha.devocional ? 'comentário-devocional' : 'comentário');
       try {
         await api.responderComentario(c.id, RESPOSTAS_PUBLICAS[Math.abs(hash(c.id)) % RESPOSTAS_PUBLICAS.length]);
       } catch {
@@ -164,14 +178,15 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
         const username = String(m.from?.username ?? '').toLowerCase();
         if (!de || de === String(api.userId) || (eu && username === eu)) continue;
         if (estado.mensagens[m.id]) continue;
-        if (!pedeOPlano(m.message, palavras)) continue;
+        const escolha = escolher(m.message);
+        if (!escolha) continue;
         const quando = Date.parse(m.created_time ?? '') || 0;
         estado.mensagens[m.id] = agora;
         if (quando && agora - quando > UM_DIA) continue;
         try {
-          await api.direcParaPessoa(de, mensagem);
+          await api.direcParaPessoa(de, escolha.mensagem);
           resumo.enviados++;
-          resumo.eventos.push('direct');
+          resumo.eventos.push(escolha.devocional ? 'direct-devocional' : 'direct');
           await pausar(1500);
         } catch (e) {
           if (e.fatal) {
@@ -243,7 +258,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
     writeFileSync(process.env.ARQUIVO_DO_PAINEL ?? 'status.json', JSON.stringify(atualizarPainel(estado, r, erro, Date.now(), tokenGeradoEm)));
   };
   try {
-    const r = await rodar({ api: new Instagram(token, userId), estado, link, palavras });
+    const linkDevocional = (process.env.LINK_DO_DEVOCIONAL ?? '').trim() || undefined;
+    const palavrasDevocional = (process.env.PALAVRAS_DEVOCIONAL ?? 'devocional,40 dias,40dias').split(',');
+    const r = await rodar({ api: new Instagram(token, userId), estado, link, palavras, linkDevocional, palavrasDevocional });
     console.log(`Lidos: ${r.lidos} · links enviados: ${r.enviados}`);
     for (const a of r.avisos) console.log(`::warning::${a}`);
     salvar(r);

@@ -43,6 +43,9 @@ jobs:
           INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
           LINK_DO_PLANO: https://flaviocoelhotoledo.systeme.io/30-dias-de-paz
           PALAVRAS: eu quero,quero,euquero
+          # Quem escreve uma destas palavras recebe a página de vendas do devocional de 40 dias (e não o plano grátis).
+          LINK_DO_DEVOCIONAL: https://centralcursosonline.systeme.io/devocional-40-dias
+          PALAVRAS_DEVOCIONAL: devocional,40 dias,40dias
           # Dia em que o token foi gerado (o token vale 60 dias). Ao renovar, troque esta data: a página de monitoramento avisa antes de vencer.
           TOKEN_GERADO_EM: '2026-11-21'
         run: node robo.mjs
