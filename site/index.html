@@ -59,14 +59,14 @@
   <div class="card"><ul id="lista"><li class="vazio">Carregando…</li></ul></div>
 
   <footer>
-    O robô roda a cada 5 minutos no GitHub Actions e lê os comentários e o direct. Esta página só mostra números e horários, nunca nomes.
-    <br><a href="https://github.com/flavianoct/vinde-a-mim-robo/actions/workflows/eu-quero.yml">Ver as execuções</a> ·
-    <a href="https://github.com/flavianoct/vinde-a-mim-robo/actions/workflows/eu-quero.yml">Rodar agora (Run workflow)</a>
+    O robô roda a cada minuto no Cloudflare e lê os comentários e o direct. Esta página só mostra números e horários, nunca nomes.
+    <br><a href="https://dash.cloudflare.com/3595b3b77f0560436d6fce2905299098/workers/services/view/vinde-a-mim-robo/production/observability">Ver as execuções (Cloudflare)</a> ·
+    <a href="https://vinde-a-mim-robo.flaviocoelhotoledo.workers.dev/rodar-agora">Rodar agora</a>
   </footer>
 </main>
 
 <script>
-const FONTE = 'https://raw.githubusercontent.com/flavianoct/vinde-a-mim-robo/dados/status.json';
+const FONTE = 'https://vinde-a-mim-robo.flaviocoelhotoledo.workers.dev/';
 const TZ = 'America/Sao_Paulo';
 const $ = (id) => document.getElementById(id);
 const dia = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(0, 10);
