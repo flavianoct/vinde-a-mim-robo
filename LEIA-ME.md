@@ -1,6 +1,6 @@
 # Robô do EU QUERO — Vinde a Mim
 
-Roda no GitHub Actions a cada 10 minutos. Lê os comentários dos Reels dos últimos dias e as mensagens do direct;
+Roda no GitHub Actions a cada 5 minutos. Lê os comentários dos Reels dos últimos dias e as mensagens do direct;
 quem escreve "eu quero", "quero" ou "euquero" recebe o link do plano grátis (https://flaviocoelhotoledo.systeme.io/30-dias-de-paz) no direct,
 e o comentário ganha a resposta "Te mandei no direct! 📩". Cada pessoa recebe uma vez só.
 
