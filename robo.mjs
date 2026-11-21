@@ -100,7 +100,7 @@ export function textoDoDirect(link) {
  * Devolve { lidos, enviados, avisos }. Erro fatal (token vencido, falta de permissão) é lançado para a rodada falhar e o GitHub avisar.
  */
 export async function rodar({ api, estado, link, palavras, limite = 20, agora = Date.now(), pausar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
-  const resumo = { lidos: 0, enviados: 0, avisos: [] };
+  const resumo = { lidos: 0, enviados: 0, avisos: [], eventos: [] };
   estado.comentarios ??= {};
   estado.mensagens ??= {};
   const mensagem = textoDoDirect(link);
@@ -144,6 +144,7 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
         continue;
       }
       resumo.enviados++;
+      resumo.eventos.push('comentário');
       try {
         await api.responderComentario(c.id, RESPOSTAS_PUBLICAS[Math.abs(hash(c.id)) % RESPOSTAS_PUBLICAS.length]);
       } catch {
@@ -170,6 +171,7 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
         try {
           await api.direcParaPessoa(de, mensagem);
           resumo.enviados++;
+          resumo.eventos.push('direct');
           await pausar(1500);
         } catch (e) {
           if (e.fatal) {
@@ -191,6 +193,31 @@ export async function rodar({ api, estado, link, palavras, limite = 20, agora = 
   return resumo;
 }
 
+/**
+ * Resumo que a página de monitoramento lê (status.json). Só números, horários e avisos: o repositório é público,
+ * então nunca entram nomes de quem comentou. O histórico fica em estado.painel e cresce até 100 eventos.
+ */
+export function atualizarPainel(estado, r, erro, agora = Date.now(), tokenGeradoEm = '') {
+  const p = (estado.painel ??= { total: 0, porDia: {}, eventos: [], rodadas: 0 });
+  const dia = new Date(agora - 3 * 3600_000).toISOString().slice(0, 10); // dia em Brasília
+  p.rodadas++;
+  p.ultimaRodada = agora;
+  if (erro) {
+    p.ultimoErro = { em: agora, mensagem: String(erro).slice(0, 300) };
+    p.ok = false;
+  } else {
+    p.ok = true;
+    p.ultimoLido = r.lidos;
+    p.avisos = r.avisos.slice(0, 5).map((a) => String(a).slice(0, 200));
+    p.total += r.enviados;
+    if (r.enviados) p.porDia[dia] = (p.porDia[dia] ?? 0) + r.enviados;
+    for (const tipo of r.eventos) p.eventos.unshift({ em: agora, tipo });
+    p.eventos = p.eventos.slice(0, 100);
+    for (const d of Object.keys(p.porDia)) if (Date.parse(d) < agora - 60 * UM_DIA) delete p.porDia[d];
+  }
+  return { ...p, tokenGeradoEm, atualizadoEm: agora };
+}
+
 function hash(s) {
   let h = 0;
   for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0;
@@ -210,14 +237,19 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   }
   const arquivo = process.env.ARQUIVO_DO_ESTADO ?? 'estado.json';
   const estado = existsSync(arquivo) ? JSON.parse(readFileSync(arquivo, 'utf8')) : {};
+  const tokenGeradoEm = (process.env.TOKEN_GERADO_EM ?? '').trim();
+  const salvar = (r, erro) => {
+    writeFileSync(arquivo, JSON.stringify(estado));
+    writeFileSync(process.env.ARQUIVO_DO_PAINEL ?? 'status.json', JSON.stringify(atualizarPainel(estado, r, erro, Date.now(), tokenGeradoEm)));
+  };
   try {
     const r = await rodar({ api: new Instagram(token, userId), estado, link, palavras });
     console.log(`Lidos: ${r.lidos} · links enviados: ${r.enviados}`);
     for (const a of r.avisos) console.log(`::warning::${a}`);
+    salvar(r);
   } catch (e) {
     console.error(`::error::${e.message}`);
-    writeFileSync(arquivo, JSON.stringify(estado));
+    salvar(undefined, e.message);
     process.exit(1);
   }
-  writeFileSync(arquivo, JSON.stringify(estado));
 }

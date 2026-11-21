@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pedeOPlano, rodar } from '../robo.mjs';
+import { pedeOPlano, rodar, atualizarPainel } from '../robo.mjs';
+
+test('painel soma envios, guarda eventos sem nomes e registra erro', () => {
+  const estado = {};
+  const t = Date.parse('2026-11-22T15:00:00Z');
+  let s = atualizarPainel(estado, { lidos: 10, enviados: 2, avisos: [], eventos: ['comentário', 'direct'] }, undefined, t, '2026-11-21');
+  assert.equal(s.total, 2);
+  assert.equal(s.porDia['2026-11-22'], 2);
+  assert.equal(s.eventos.length, 2);
+  assert.equal(JSON.stringify(s).includes('usuario'), false);
+  s = atualizarPainel(estado, undefined, 'token vencido', t + 600000, '2026-11-21');
+  assert.equal(s.ok, false);
+  assert.equal(s.total, 2);
+  assert.equal(s.ultimoErro.mensagem, 'token vencido');
+  assert.equal(s.tokenGeradoEm, '2026-11-21');
+});
 
 const P = ['eu quero', 'quero', 'euquero'];
 const agora = Date.parse('2026-11-22T12:00:00Z');

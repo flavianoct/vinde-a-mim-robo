@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Robô do EU QUERO</title>
+<style>
+  :root { --bg:#fff8e8; --card:#fffdf6; --ink:#3b2a14; --mut:#8a7556; --line:#ecd9ae; --gold:#c8902f; --ok:#2e8b57; --warn:#c98a00; --bad:#c0392b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10192f; --card:#172342; --ink:#f4ead2; --mut:#a9b3cc; --line:#2a3a63; --gold:#f2c46d; --ok:#5fd193; --warn:#f2c46d; --bad:#ff7d6e; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font:700 26px Georgia,"Times New Roman",serif; margin:0; }
+  .sub { color:var(--mut); margin:2px 0 18px; }
+  .topo { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px; font-weight:600; border:1px solid var(--line); background:var(--card); }
+  .dot { width:11px; height:11px; border-radius:50%; background:var(--mut); }
+  .ok .dot { background:var(--ok); } .warn .dot { background:var(--warn); } .bad .dot { background:var(--bad); }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .card .n { font:700 30px Georgia,serif; color:var(--gold); }
+  .card .t { color:var(--mut); font-size:14px; }
+  h2 { font:700 17px system-ui,sans-serif; margin:22px 0 8px; }
+  .barras { display:flex; align-items:flex-end; gap:5px; height:110px; padding:8px 4px 0; }
+  .barras div { flex:1; background:var(--gold); border-radius:5px 5px 0 0; min-height:3px; position:relative; opacity:.9; }
+  .barras div span { position:absolute; top:-18px; left:0; right:0; text-align:center; font-size:11px; color:var(--mut); }
+  .eixo { display:flex; gap:5px; padding:4px 4px 0; font-size:11px; color:var(--mut); }
+  .eixo span { flex:1; text-align:center; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; justify-content:space-between; gap:10px; padding:9px 2px; border-bottom:1px dashed var(--line); }
+  li:last-child { border:0; }
+  .aviso { border-left:4px solid var(--warn); } .erro { border-left:4px solid var(--bad); }
+  .vazio { color:var(--mut); }
+  footer { margin-top:26px; color:var(--mut); font-size:13px; }
+  a { color:var(--gold); }
+</style>
+</head>
+<body>
+<main>
+  <div class="topo">
+    <div><h1>Robô do EU QUERO</h1><p class="sub">Vinde a Mim · @mim_vinde.palavra</p></div>
+    <div id="status" class="pill"><span class="dot"></span><span id="statusTxt">Carregando…</span></div>
+  </div>
+
+  <div class="grade">
+    <div class="card"><div class="n" id="hoje">–</div><div class="t">links enviados hoje</div></div>
+    <div class="card"><div class="n" id="semana">–</div><div class="t">nos últimos 7 dias</div></div>
+    <div class="card"><div class="n" id="total">–</div><div class="t">no total</div></div>
+    <div class="card"><div class="n" id="token">–</div><div class="t" id="tokenTxt">token do Instagram</div></div>
+  </div>
+
+  <div id="alertas"></div>
+
+  <h2>Últimos 14 dias</h2>
+  <div class="card"><div class="barras" id="barras"></div><div class="eixo" id="eixo"></div></div>
+
+  <h2>Últimos links enviados</h2>
+  <div class="card"><ul id="lista"><li class="vazio">Carregando…</li></ul></div>
+
+  <footer>
+    O robô roda a cada 10 minutos no GitHub Actions e lê os comentários e o direct. Esta página só mostra números e horários, nunca nomes.
+    <br><a href="https://github.com/flavianoct/vinde-a-mim-robo/actions/workflows/eu-quero.yml">Ver as execuções</a> ·
+    <a href="https://github.com/flavianoct/vinde-a-mim-robo/actions/workflows/eu-quero.yml">Rodar agora (Run workflow)</a>
+  </footer>
+</main>
+
+<script>
+const FONTE = 'https://raw.githubusercontent.com/flavianoct/vinde-a-mim-robo/dados/status.json';
+const TZ = 'America/Sao_Paulo';
+const $ = (id) => document.getElementById(id);
+const dia = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(0, 10);
+const fmt = (ms) => new Date(ms).toLocaleString('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const hace = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'agora há pouco' : m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} dias`; };
+
+function alerta(classe, texto) {
+  const d = document.createElement('div');
+  d.className = 'card ' + classe; d.style.marginBottom = '10px'; d.textContent = texto;
+  $('alertas').appendChild(d);
+}
+
+function pintar(s) {
+  const idade = (Date.now() - s.ultimaRodada) / 60000;
+  let cls = 'ok', txt = `Funcionando · rodou ${hace(s.ultimaRodada)}`;
+  if (s.ok === false) { cls = 'bad'; txt = `Com erro · ${hace(s.ultimaRodada)}`; }
+  else if (idade > 60) { cls = 'bad'; txt = `Parado · última rodada ${hace(s.ultimaRodada)}`; }
+  else if (idade > 25) { cls = 'warn'; txt = `Atrasado · última rodada ${hace(s.ultimaRodada)}`; }
+  $('status').className = 'pill ' + cls; $('statusTxt').textContent = txt;
+
+  const por = s.porDia || {};
+  const dias = []; for (let i = 13; i >= 0; i--) { const d = dia(Date.now() - i * 86400e3); dias.push([d, por[d] || 0]); }
+  $('hoje').textContent = por[dia(Date.now())] || 0;
+  $('semana').textContent = dias.slice(-7).reduce((a, [, n]) => a + n, 0);
+  $('total').textContent = s.total ?? 0;
+
+  const max = Math.max(1, ...dias.map(([, n]) => n));
+  $('barras').innerHTML = ''; $('eixo').innerHTML = '';
+  for (const [d, n] of dias) {
+    const b = document.createElement('div'); b.style.height = Math.max(3, (n / max) * 92) + 'px'; b.title = `${d}: ${n}`;
+    if (n) { const sp = document.createElement('span'); sp.textContent = n; b.appendChild(sp); }
+    $('barras').appendChild(b);
+    const e = document.createElement('span'); e.textContent = d.slice(8); $('eixo').appendChild(e);
+  }
+
+  $('lista').innerHTML = '';
+  if (!(s.eventos || []).length) $('lista').innerHTML = '<li class="vazio">Ainda nenhum link enviado.</li>';
+  for (const ev of (s.eventos || []).slice(0, 15)) {
+    const li = document.createElement('li');
+    const a = document.createElement('span'); a.textContent = ev.tipo === 'direct' ? 'Pediu no direct → link enviado' : 'Comentou → link no direct';
+    const b = document.createElement('span'); b.style.color = 'var(--mut)'; b.textContent = fmt(ev.em);
+    li.append(a, b); $('lista').appendChild(li);
+  }
+
+  if (s.tokenGeradoEm) {
+    const vence = Date.parse(s.tokenGeradoEm) + 60 * 86400e3;
+    const dias = Math.ceil((vence - Date.now()) / 86400e3);
+    $('token').textContent = dias > 0 ? dias + ' dias' : 'vencido';
+    $('tokenTxt').textContent = 'até o token vencer';
+    if (dias <= 10) alerta(dias <= 3 ? 'erro' : 'aviso', `O token do Instagram vence em ${Math.max(dias, 0)} dia(s). Gere outro (ou renove) e atualize o Secret INSTAGRAM_TOKEN.`);
+  }
+  if (s.ultimoErro && s.ok === false) alerta('erro', `Último erro (${fmt(s.ultimoErro.em)}): ${s.ultimoErro.mensagem}`);
+  for (const a of (s.avisos || [])) alerta('aviso', a);
+}
+
+fetch(FONTE + '?t=' + Date.now(), { cache: 'no-store' })
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(pintar)
+  .catch(() => { $('statusTxt').textContent = 'Ainda sem dados (o robô ainda não gravou o resumo)'; $('lista').innerHTML = '<li class="vazio">Sem dados ainda.</li>'; });
+</script>
+</body>
+</html>
